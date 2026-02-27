@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoBots - Bloodstream Visualization</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: white;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(45deg, #00ff9d, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 255, 157, 0.5)); }
+            50% { filter: drop-shadow(0 0 30px rgba(0, 255, 157, 0.8)); }
+        }
+
+        /* Stats Cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 157, 0.2);
+            border-color: #00ff9d;
+        }
+
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.4s; }
+        .stat-card:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff9d;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Visualization Area */
+        .visualization-area {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: radial-gradient(circle at 30% 50%, #1a1a2e, #0a0a1a);
+            border-radius: 30px;
+            border: 2px solid rgba(0, 255, 157, 0.3);
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 255, 157, 0.2);
+            margin-bottom: 30px;
+        }
+
+        /* Blood Vessel Effect */
+        .blood-vessel {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 20px,
+                rgba(255, 0, 0, 0.03) 20px,
+                rgba(255, 0, 0, 0.05) 40px
+            );
+            pointer-events: none;
+        }
+
+        /* Vessel Walls */
+        .vessel-wall {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.2) 0%,
+                transparent 10%,
+                transparent 90%,
+                rgba(255, 0, 0, 0.2) 100%
+            );
+            pointer-events: none;
+        }
+
+        /* Blood Cells (Red Background) */
+        .blood-cells {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle at 10px 10px, rgba(255, 0, 0, 0.1) 2px, transparent 2px);
+            background-size: 30px 30px;
+            animation: flow 20s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { background-position: 0 0; }
+            100% { background-position: 100px 100px; }
+        }
+
+        /* Canvas for Nanobots */
+        #nanobotCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .control-title {
+            color: #00ff9d;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-title i {
+            font-size: 1.5rem;
+        }
+
+        .slider-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .slider-item {
+            text-align: center;
+        }
+
+        .slider-item label {
+            display: block;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #00ff9d, #00ccff);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #00ff9d;
+            box-shadow: 0 0 10px #00ff9d;
+        }
+
+        .value-display {
+            color: #00ff9d;
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+
+        /* Bot Info Panel */
+        .bot-info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #00ff9d;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 250px;
+            z-index: 20;
+            display: none;
+        }
+
+        .bot-info-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .bot-info-header {
+            color: #00ff9d;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .bot-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bot-info-label {
+            color: #888;
+        }
+
+        .bot-info-value {
+            color: #00ff9d;
+            font-weight: bold;
+        }
+
+        .health-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .health-good { background: #00ff9d; box-shadow: 0 0 10px #00ff9d; }
+        .health-warning { background: #ffaa00; box-shadow: 0 0 10px #ffaa00; }
+        .health-critical { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #888;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .slider-container { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧬 VITA-BOT NANOBOT SWARM</h1>
+            <p>Real-time Bloodstream Monitoring | AI-Powered Health Surveillance</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">🤖</div>
+                <div class="stat-value" id="botCount">50</div>
+                <div class="stat-label">Active Nanobots</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">❤️</div>
+                <div class="stat-value" id="avgHeartRate">72</div>
+                <div class="stat-label">Avg Heart Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🩸</div>
+                <div class="stat-value" id="avgGlucose">98</div>
+                <div class="stat-label">Avg Glucose</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏥</div>
+                <div class="stat-value" id="healthScore">94</div>
+                <div class="stat-label">Health Score</div>
+            </div>
+        </div>
+
+        <!-- Main Visualization -->
+        <div class="visualization-area" id="visualizationArea">
+            <div class="blood-vessel"></div>
+            <div class="vessel-wall"></div>
+            <div class="blood-cells"></div>
+            <canvas id="nanobotCanvas"></canvas>
+            
+            <!-- Bot Info Panel -->
+            <div class="bot-info-panel" id="botInfoPanel">
+                <div class="bot-info-header">
+                    <span id="selectedBotId">BOT-001</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Status:</span>
+                    <span class="bot-info-value" id="botStatus">Active</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Health:</span>
+                    <span class="bot-info-value" id="botHealth">
+                        <span class="health-indicator health-good"></span> Healthy
+                    </span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Glucose:</span>
+                    <span class="bot-info-value" id="botGlucose">98 mg/dL</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Heart Rate:</span>
+                    <span class="bot-info-value" id="botHr">72 bpm</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Temperature:</span>
+                    <span class="bot-info-value" id="botTemp">36.6°C</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Troponin:</span>
+                    <span class="bot-info-value" id="botTroponin">0.02 ng/mL</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Oxygen:</span>
+                    <span class="bot-info-value" id="botOxygen">98%</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Battery:</span>
+                    <span class="bot-info-value" id="botBattery">87%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-title">
+                <i>🎮</i> Nanobot Swarm Control
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-item">
+                    <label>Number of Bots</label>
+                    <input type="range" id="botCountSlider" min="5" max="100" value="50" step="1">
+                    <div class="value-display" id="botCountValue">50</div>
+                </div>
+                <div class="slider-item">
+                    <label>Speed</label>
+                    <input type="range" id="speedSlider" min="0.5" max="3" value="1.5" step="0.1">
+                    <div class="value-display" id="speedValue">1.5x</div>
+                </div>
+                <div class="slider-item">
+                    <label>Health Variance</label>
+                    <input type="range" id="healthSlider" min="0" max="100" value="30" step="1">
+                    <div class="value-display" id="healthValue">30%</div>
+                </div>
+                <div class="slider-item">
+                    <label>Zoom</label>
+                    <input type="range" id="zoomSlider" min="0.5" max="2" value="1" step="0.1">
+                    <div class="value-display" id="zoomValue">1.0x</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button onclick="togglePause()" style="background: #00ff9d; color: #1a1a2e; border: none; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">⏸️ Pause</button>
+                <button onclick="resetSimulation()" style="background: transparent; color: #00ff9d; border: 2px solid #00ff9d; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">🔄 Reset</button>
+                <button onclick="addRandomBot()" style="background: transparent; color: #ffaa00; border: 2px solid #ffaa00; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">➕ Add Bot</button>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color" style="background: #00ff9d;"></span>
+                <span>Healthy Bot</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #ffaa00;"></span>
+                <span>Warning</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #ff4d4d;"></span>
+                <span>Critical</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: rgba(255,0,0,0.2); width: 20px;"></span>
+                <span>Blood Flow</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('nanobotCanvas');
+        const ctx = canvas.getContext('2d');
+        const area = document.getElementById('visualizationArea');
+
+        // Bot array
+        let bots = [];
+        let animationId;
+        let paused = false;
+        let selectedBot = null;
+
+        // Resize canvas
+        function resizeCanvas() {
+            canvas.width = area.clientWidth;
+            canvas.height = area.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Bot class
+        class Nanobot {
+            constructor(id, x, y) {
+                this.id = id;
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = 8;
+                
+                // Health metrics
+                this.glucose = 70 + Math.random() * 70; // 70-140
+                this.heartRate = 60 + Math.random() * 40; // 60-100
+                this.temperature = 36 + Math.random() * 1.5; // 36-37.5
+                this.troponin = Math.random() * 0.05; // 0-0.05
+                this.oxygen = 90 + Math.random() * 10; // 90-100
+                this.battery = 85 + Math.random() * 15; // 85-100
+                
+                this.updateHealthStatus();
+            }
+
+            updateHealthStatus() {
+                if (this.glucose > 140 || this.troponin > 0.04) {
+                    this.health = 'critical';
+                    this.color = '#ff4d4d';
+                } else if (this.glucose > 120 || this.temperature > 37.8) {
+                    this.health = 'warning';
+                    this.color = '#ffaa00';
+                } else {
+                    this.health = 'healthy';
+                    this.color = '#00ff9d';
+                }
+            }
+
+            update() {
+                if (paused) return;
+
+                // Move
+                this.x += this.vx * parseFloat(document.getElementById('speedSlider').value);
+                this.y += this.vy * parseFloat(document.getElementById('speedSlider').value);
+
+                // Bounce off walls
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Randomly change direction occasionally
+                if (Math.random() < 0.01) {
+                    this.vx += (Math.random() - 0.5) * 0.5;
+                    this.vy += (Math.random() - 0.5) * 0.5;
+                    
+                    // Limit speed
+                    const maxSpeed = 3;
+                    if (Math.abs(this.vx) > maxSpeed) this.vx = Math.sign(this.vx) * maxSpeed;
+                    if (Math.abs(this.vy) > maxSpeed) this.vy = Math.sign(this.vy) * maxSpeed;
+                }
+
+                // Update metrics slightly
+                if (Math.random() < 0.02) {
+                    this.glucose += (Math.random() - 0.5) * 5;
+                    this.glucose = Math.max(60, Math.min(200, this.glucose));
+                    
+                    this.heartRate += (Math.random() - 0.5) * 3;
+                    this.heartRate = Math.max(40, Math.min(150, this.heartRate));
+                    
+                    this.updateHealthStatus();
+                }
+            }
+
+            draw(ctx) {
+                // Draw glow
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 15;
+                
+                // Draw bot
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                
+                // Gradient fill
+                const gradient = ctx.createRadialGradient(this.x-2, this.y-2, 2, this.x, this.y, this.size+5);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.5, this.color);
+                gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Draw outer ring
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw inner core
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(this.x-1, this.y-1, this.size/3, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                
+                // Draw ID (only if selected or zoomed)
+                if (this === selectedBot || parseFloat(document.getElementById('zoomSlider').value) > 1.5) {
+                    ctx.shadowBlur = 5;
+                    ctx.font = '10px Arial';
+                    ctx.fillStyle = 'white';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.id, this.x, this.y - 15);
+                }
+                
+                // Reset shadow
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Initialize bots
+        function initBots(count) {
+            bots = [];
+            for (let i = 0; i < count; i++) {
+                bots.push(new Nanobot(`BOT-${String(i+1).padStart(3, '0')}`));
+            }
+        }
+
+        initBots(50);
+
+        // Animation loop
+        function animate() {
+            // Clear canvas with fade effect
+            ctx.fillStyle = 'rgba(10, 10, 26, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw bots
+            bots.forEach(bot => {
+                bot.update();
+                bot.draw(ctx);
+            });
+
+            // Update stats
+            updateStats();
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('botCount').textContent = bots.length;
+            
+            const avgGlucose = bots.reduce((sum, bot) => sum + bot.glucose, 0) / bots.length;
+            document.getElementById('avgGlucose').textContent = Math.round(avgGlucose);
+            
+            const avgHR = bots.reduce((sum, bot) => sum + bot.heartRate, 0) / bots.length;
+            document.getElementById('avgHeartRate').textContent = Math.round(avgHR);
+            
+            const healthyBots = bots.filter(bot => bot.health === 'healthy').length;
+            const healthScore = Math.round((healthyBots / bots.length) * 100);
+            document.getElementById('healthScore').textContent = healthScore;
+        }
+
+        // Event listeners for controls
+        document.getElementById('botCountSlider').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('botCountValue').textContent = val;
+            initBots(parseInt(val));
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value + 'x';
+        });
+
+        document.getElementById('healthSlider').addEventListener('input', (e) => {
+            document.getElementById('healthValue').textContent = e.target.value + '%';
+            // Adjust health variance logic here
+        });
+
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('zoomValue').textContent = val + 'x';
+            canvas.style.transform = `scale(${val})`;
+            canvas.style.transformOrigin = 'center';
+        });
+
+        // Canvas click handler for bot selection
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            
+            // Find closest bot
+            let closestBot = null;
+            let minDist = Infinity;
+            
+            bots.forEach(bot => {
+                const dist = Math.hypot(bot.x - mouseX, bot.y - mouseY);
+                if (dist < minDist && dist < 30) {
+                    minDist = dist;
+                    closestBot = bot;
+                }
+            });
+            
+            if (closestBot) {
+                selectedBot = closestBot;
+                showBotInfo(closestBot);
+            } else {
+                document.getElementById('botInfoPanel').classList.remove('active');
+                selectedBot = null;
+            }
+        });
+
+        // Show bot info
+        function showBotInfo(bot) {
+            const panel = document.getElementById('botInfoPanel');
+            document.getElementById('selectedBotId').textContent = bot.id;
+            document.getElementById('botStatus').textContent = 'Active';
+            
+            let healthClass = 'health-good';
+            let healthText = 'Healthy';
+            if (bot.health === 'warning') {
+                healthClass = 'health-warning';
+                healthText = 'Warning';
+            } else if (bot.health === 'critical') {
+                healthClass = 'health-critical';
+                healthText = 'Critical';
+            }
+            
+            document.getElementById('botHealth').innerHTML = `<span class="health-indicator ${healthClass}"></span> ${healthText}`;
+            document.getElementById('botGlucose').textContent = `${Math.round(bot.glucose)} mg/dL`;
+            document.getElementById('botHr').textContent = `${Math.round(bot.heartRate)} bpm`;
+            document.getElementById('botTemp').textContent = `${bot.temperature.toFixed(1)}°C`;
+            document.getElementById('botTroponin').textContent = `${bot.troponin.toFixed(3)} ng/mL`;
+            document.getElementById('botOxygen').textContent = `${Math.round(bot.oxygen)}%`;
+            document.getElementById('botBattery').textContent = `${Math.round(bot.battery)}%`;
+            
+            panel.classList.add('active');
+        }
+
+        // Control functions
+        function togglePause() {
+            paused = !paused;
+            event.target.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+        }
+
+        function resetSimulation() {
+            initBots(parseInt(document.getElementById('botCountSlider').value));
+            document.getElementById('botInfoPanel').classList.remove('active');
+        }
+
+        function addRandomBot() {
+            const newBot = new Nanobot(`BOT-${String(bots.length + 1).padStart(3, '0')}`);
+            bots.push(newBot);
+            document.getElementById('botCountSlider').value = bots.length;
+            document.getElementById('botCountValue').textContent = bots.length;
+        }
+
+        // Auto-update panel if selected bot exists
+        setInterval(() => {
+            if (selectedBot) {
+                // Check if bot still exists
+                if (bots.includes(selectedBot)) {
+                    showBotInfo(selectedBot);
+                } else {
+                    document.getElementById('botInfoPanel').classList.remove('active');
+                    selectedBot = null;
+                }
+            }
+        }, 1000);
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                paused = !paused;
+                const button = document.querySelector('button:nth-child(1)');
+                button.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+            }
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoBots - Bloodstream Visualization</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: white;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(45deg, #00ff9d, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 255, 157, 0.5)); }
+            50% { filter: drop-shadow(0 0 30px rgba(0, 255, 157, 0.8)); }
+        }
+
+        /* Stats Cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 157, 0.2);
+            border-color: #00ff9d;
+        }
+
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.4s; }
+        .stat-card:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff9d;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Visualization Area */
+        .visualization-area {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: radial-gradient(circle at 30% 50%, #1a1a2e, #0a0a1a);
+            border-radius: 30px;
+            border: 2px solid rgba(0, 255, 157, 0.3);
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 255, 157, 0.2);
+            margin-bottom: 30px;
+        }
+
+        /* Blood Vessel Effect */
+        .blood-vessel {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 20px,
+                rgba(255, 0, 0, 0.03) 20px,
+                rgba(255, 0, 0, 0.05) 40px
+            );
+            pointer-events: none;
+        }
+
+        /* Vessel Walls */
+        .vessel-wall {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.2) 0%,
+                transparent 10%,
+                transparent 90%,
+                rgba(255, 0, 0, 0.2) 100%
+            );
+            pointer-events: none;
+        }
+
+        /* Blood Cells (Red Background) */
+        .blood-cells {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle at 10px 10px, rgba(255, 0, 0, 0.1) 2px, transparent 2px);
+            background-size: 30px 30px;
+            animation: flow 20s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { background-position: 0 0; }
+            100% { background-position: 100px 100px; }
+        }
+
+        /* Canvas for Nanobots */
+        #nanobotCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .control-title {
+            color: #00ff9d;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-title i {
+            font-size: 1.5rem;
+        }
+
+        .slider-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .slider-item {
+            text-align: center;
+        }
+
+        .slider-item label {
+            display: block;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #00ff9d, #00ccff);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #00ff9d;
+            box-shadow: 0 0 10px #00ff9d;
+        }
+
+        .value-display {
+            color: #00ff9d;
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+
+        /* Bot Info Panel */
+        .bot-info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #00ff9d;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 250px;
+            z-index: 20;
+            display: none;
+        }
+
+        .bot-info-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .bot-info-header {
+            color: #00ff9d;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .bot-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bot-info-label {
+            color: #888;
+        }
+
+        .bot-info-value {
+            color: #00ff9d;
+            font-weight: bold;
+        }
+
+        .health-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .health-good { background: #00ff9d; box-shadow: 0 0 10px #00ff9d; }
+        .health-warning { background: #ffaa00; box-shadow: 0 0 10px #ffaa00; }
+        .health-critical { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #888;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .slider-container { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧬 VITA-BOT NANOBOT SWARM</h1>
+            <p>Real-time Bloodstream Monitoring | AI-Powered Health Surveillance</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">🤖</div>
+                <div class="stat-value" id="botCount">50</div>
+                <div class="stat-label">Active Nanobots</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">❤️</div>
+                <div class="stat-value" id="avgHeartRate">72</div>
+                <div class="stat-label">Avg Heart Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🩸</div>
+                <div class="stat-value" id="avgGlucose">98</div>
+                <div class="stat-label">Avg Glucose</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏥</div>
+                <div class="stat-value" id="healthScore">94</div>
+                <div class="stat-label">Health Score</div>
+            </div>
+        </div>
+
+        <!-- Main Visualization -->
+        <div class="visualization-area" id="visualizationArea">
+            <div class="blood-vessel"></div>
+            <div class="vessel-wall"></div>
+            <div class="blood-cells"></div>
+            <canvas id="nanobotCanvas"></canvas>
+            
+            <!-- Bot Info Panel -->
+            <div class="bot-info-panel" id="botInfoPanel">
+                <div class="bot-info-header">
+                    <span id="selectedBotId">BOT-001</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Status:</span>
+                    <span class="bot-info-value" id="botStatus">Active</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Health:</span>
+                    <span class="bot-info-value" id="botHealth">
+                        <span class="health-indicator health-good"></span> Healthy
+                    </span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Glucose:</span>
+                    <span class="bot-info-value" id="botGlucose">98 mg/dL</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Heart Rate:</span>
+                    <span class="bot-info-value" id="botHr">72 bpm</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Temperature:</span>
+                    <span class="bot-info-value" id="botTemp">36.6°C</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Troponin:</span>
+                    <span class="bot-info-value" id="botTroponin">0.02 ng/mL</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Oxygen:</span>
+                    <span class="bot-info-value" id="botOxygen">98%</span>
+                </div>
+                <div class="bot-info-row">
+                    <span class="bot-info-label">Battery:</span>
+                    <span class="bot-info-value" id="botBattery">87%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-title">
+                <i>🎮</i> Nanobot Swarm Control
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-item">
+                    <label>Number of Bots</label>
+                    <input type="range" id="botCountSlider" min="5" max="100" value="50" step="1">
+                    <div class="value-display" id="botCountValue">50</div>
+                </div>
+                <div class="slider-item">
+                    <label>Speed</label>
+                    <input type="range" id="speedSlider" min="0.5" max="3" value="1.5" step="0.1">
+                    <div class="value-display" id="speedValue">1.5x</div>
+                </div>
+                <div class="slider-item">
+                    <label>Health Variance</label>
+                    <input type="range" id="healthSlider" min="0" max="100" value="30" step="1">
+                    <div class="value-display" id="healthValue">30%</div>
+                </div>
+                <div class="slider-item">
+                    <label>Zoom</label>
+                    <input type="range" id="zoomSlider" min="0.5" max="2" value="1" step="0.1">
+                    <div class="value-display" id="zoomValue">1.0x</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button onclick="togglePause()" style="background: #00ff9d; color: #1a1a2e; border: none; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">⏸️ Pause</button>
+                <button onclick="resetSimulation()" style="background: transparent; color: #00ff9d; border: 2px solid #00ff9d; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">🔄 Reset</button>
+                <button onclick="addRandomBot()" style="background: transparent; color: #ffaa00; border: 2px solid #ffaa00; padding: 10px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: all 0.3s;">➕ Add Bot</button>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color" style="background: #00ff9d;"></span>
+                <span>Healthy Bot</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #ffaa00;"></span>
+                <span>Warning</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #ff4d4d;"></span>
+                <span>Critical</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: rgba(255,0,0,0.2); width: 20px;"></span>
+                <span>Blood Flow</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('nanobotCanvas');
+        const ctx = canvas.getContext('2d');
+        const area = document.getElementById('visualizationArea');
+
+        // Bot array
+        let bots = [];
+        let animationId;
+        let paused = false;
+        let selectedBot = null;
+
+        // Resize canvas
+        function resizeCanvas() {
+            canvas.width = area.clientWidth;
+            canvas.height = area.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Bot class
+        class Nanobot {
+            constructor(id, x, y) {
+                this.id = id;
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = 8;
+                
+                // Health metrics
+                this.glucose = 70 + Math.random() * 70; // 70-140
+                this.heartRate = 60 + Math.random() * 40; // 60-100
+                this.temperature = 36 + Math.random() * 1.5; // 36-37.5
+                this.troponin = Math.random() * 0.05; // 0-0.05
+                this.oxygen = 90 + Math.random() * 10; // 90-100
+                this.battery = 85 + Math.random() * 15; // 85-100
+                
+                this.updateHealthStatus();
+            }
+
+            updateHealthStatus() {
+                if (this.glucose > 140 || this.troponin > 0.04) {
+                    this.health = 'critical';
+                    this.color = '#ff4d4d';
+                } else if (this.glucose > 120 || this.temperature > 37.8) {
+                    this.health = 'warning';
+                    this.color = '#ffaa00';
+                } else {
+                    this.health = 'healthy';
+                    this.color = '#00ff9d';
+                }
+            }
+
+            update() {
+                if (paused) return;
+
+                // Move
+                this.x += this.vx * parseFloat(document.getElementById('speedSlider').value);
+                this.y += this.vy * parseFloat(document.getElementById('speedSlider').value);
+
+                // Bounce off walls
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                // Randomly change direction occasionally
+                if (Math.random() < 0.01) {
+                    this.vx += (Math.random() - 0.5) * 0.5;
+                    this.vy += (Math.random() - 0.5) * 0.5;
+                    
+                    // Limit speed
+                    const maxSpeed = 3;
+                    if (Math.abs(this.vx) > maxSpeed) this.vx = Math.sign(this.vx) * maxSpeed;
+                    if (Math.abs(this.vy) > maxSpeed) this.vy = Math.sign(this.vy) * maxSpeed;
+                }
+
+                // Update metrics slightly
+                if (Math.random() < 0.02) {
+                    this.glucose += (Math.random() - 0.5) * 5;
+                    this.glucose = Math.max(60, Math.min(200, this.glucose));
+                    
+                    this.heartRate += (Math.random() - 0.5) * 3;
+                    this.heartRate = Math.max(40, Math.min(150, this.heartRate));
+                    
+                    this.updateHealthStatus();
+                }
+            }
+
+            draw(ctx) {
+                // Draw glow
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 15;
+                
+                // Draw bot
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                
+                // Gradient fill
+                const gradient = ctx.createRadialGradient(this.x-2, this.y-2, 2, this.x, this.y, this.size+5);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.5, this.color);
+                gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Draw outer ring
+                ctx.shadowBlur = 20;
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw inner core
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(this.x-1, this.y-1, this.size/3, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                
+                // Draw ID (only if selected or zoomed)
+                if (this === selectedBot || parseFloat(document.getElementById('zoomSlider').value) > 1.5) {
+                    ctx.shadowBlur = 5;
+                    ctx.font = '10px Arial';
+                    ctx.fillStyle = 'white';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.id, this.x, this.y - 15);
+                }
+                
+                // Reset shadow
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Initialize bots
+        function initBots(count) {
+            bots = [];
+            for (let i = 0; i < count; i++) {
+                bots.push(new Nanobot(`BOT-${String(i+1).padStart(3, '0')}`));
+            }
+        }
+
+        initBots(50);
+
+        // Animation loop
+        function animate() {
+            // Clear canvas with fade effect
+            ctx.fillStyle = 'rgba(10, 10, 26, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw bots
+            bots.forEach(bot => {
+                bot.update();
+                bot.draw(ctx);
+            });
+
+            // Update stats
+            updateStats();
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('botCount').textContent = bots.length;
+            
+            const avgGlucose = bots.reduce((sum, bot) => sum + bot.glucose, 0) / bots.length;
+            document.getElementById('avgGlucose').textContent = Math.round(avgGlucose);
+            
+            const avgHR = bots.reduce((sum, bot) => sum + bot.heartRate, 0) / bots.length;
+            document.getElementById('avgHeartRate').textContent = Math.round(avgHR);
+            
+            const healthyBots = bots.filter(bot => bot.health === 'healthy').length;
+            const healthScore = Math.round((healthyBots / bots.length) * 100);
+            document.getElementById('healthScore').textContent = healthScore;
+        }
+
+        // Event listeners for controls
+        document.getElementById('botCountSlider').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('botCountValue').textContent = val;
+            initBots(parseInt(val));
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value + 'x';
+        });
+
+        document.getElementById('healthSlider').addEventListener('input', (e) => {
+            document.getElementById('healthValue').textContent = e.target.value + '%';
+            // Adjust health variance logic here
+        });
+
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            const val = e.target.value;
+            document.getElementById('zoomValue').textContent = val + 'x';
+            canvas.style.transform = `scale(${val})`;
+            canvas.style.transformOrigin = 'center';
+        });
+
+        // Canvas click handler for bot selection
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            
+            // Find closest bot
+            let closestBot = null;
+            let minDist = Infinity;
+            
+            bots.forEach(bot => {
+                const dist = Math.hypot(bot.x - mouseX, bot.y - mouseY);
+                if (dist < minDist && dist < 30) {
+                    minDist = dist;
+                    closestBot = bot;
+                }
+            });
+            
+            if (closestBot) {
+                selectedBot = closestBot;
+                showBotInfo(closestBot);
+            } else {
+                document.getElementById('botInfoPanel').classList.remove('active');
+                selectedBot = null;
+            }
+        });
+
+        // Show bot info
+        function showBotInfo(bot) {
+            const panel = document.getElementById('botInfoPanel');
+            document.getElementById('selectedBotId').textContent = bot.id;
+            document.getElementById('botStatus').textContent = 'Active';
+            
+            let healthClass = 'health-good';
+            let healthText = 'Healthy';
+            if (bot.health === 'warning') {
+                healthClass = 'health-warning';
+                healthText = 'Warning';
+            } else if (bot.health === 'critical') {
+                healthClass = 'health-critical';
+                healthText = 'Critical';
+            }
+            
+            document.getElementById('botHealth').innerHTML = `<span class="health-indicator ${healthClass}"></span> ${healthText}`;
+            document.getElementById('botGlucose').textContent = `${Math.round(bot.glucose)} mg/dL`;
+            document.getElementById('botHr').textContent = `${Math.round(bot.heartRate)} bpm`;
+            document.getElementById('botTemp').textContent = `${bot.temperature.toFixed(1)}°C`;
+            document.getElementById('botTroponin').textContent = `${bot.troponin.toFixed(3)} ng/mL`;
+            document.getElementById('botOxygen').textContent = `${Math.round(bot.oxygen)}%`;
+            document.getElementById('botBattery').textContent = `${Math.round(bot.battery)}%`;
+            
+            panel.classList.add('active');
+        }
+
+        // Control functions
+        function togglePause() {
+            paused = !paused;
+            event.target.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+        }
+
+        function resetSimulation() {
+            initBots(parseInt(document.getElementById('botCountSlider').value));
+            document.getElementById('botInfoPanel').classList.remove('active');
+        }
+
+        function addRandomBot() {
+            const newBot = new Nanobot(`BOT-${String(bots.length + 1).padStart(3, '0')}`);
+            bots.push(newBot);
+            document.getElementById('botCountSlider').value = bots.length;
+            document.getElementById('botCountValue').textContent = bots.length;
+        }
+
+        // Auto-update panel if selected bot exists
+        setInterval(() => {
+            if (selectedBot) {
+                // Check if bot still exists
+                if (bots.includes(selectedBot)) {
+                    showBotInfo(selectedBot);
+                } else {
+                    document.getElementById('botInfoPanel').classList.remove('active');
+                    selectedBot = null;
+                }
+            }
+        }, 1000);
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                paused = !paused;
+                const button = document.querySelector('button:nth-child(1)');
+                button.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+            }
+        });
+    </script>
+</body>
+</html>
